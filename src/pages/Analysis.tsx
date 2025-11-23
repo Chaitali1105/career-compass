@@ -99,6 +99,11 @@ export default function Analysis() {
   const skillGaps = analysis.skill_gaps || [];
   const alternativeCareers = analysis.alternative_careers || [];
 
+  // Show only top 5 domains to avoid showing too many 100% scores
+  const topScores = scoreBreakdown
+    .sort((a: any, b: any) => b.score - a.score)
+    .slice(0, 5);
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <Navigation />
@@ -129,17 +134,17 @@ export default function Analysis() {
             </CardContent>
           </Card>
 
-          {/* Score Breakdown */}
-          {scoreBreakdown.length > 0 && (
+          {/* Score Breakdown - Only show top 5 */}
+          {topScores.length > 0 && (
             <Card className="shadow-md">
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-primary" />
-                  <CardTitle>Your Strengths Profile</CardTitle>
+                  <CardTitle>Your Top Strengths</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {scoreBreakdown.map((score: any, index: number) => (
+                {topScores.map((score: any, index: number) => (
                   <div key={index}>
                     <div className="flex justify-between mb-2">
                       <span className="font-medium capitalize">{score.domain}</span>
