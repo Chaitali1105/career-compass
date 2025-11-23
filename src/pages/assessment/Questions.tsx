@@ -74,57 +74,25 @@ export default function AssessmentQuestions() {
     setSubmitting(true);
 
     try {
-      // Delete existing answers and wait for completion
-      const { error: deleteError } = await supabase
-        .from("assessment_answers")
-        .delete()
-        .eq("user_id", userId);
-
-      if (deleteError) {
-        console.error("Delete error:", deleteError);
-        throw deleteError;
-      }
-
-      // Wait a moment to ensure delete is fully processed
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Prepare new answers
+      // Prepare answers data
       const answersData = Object.entries(answers).map(([questionId, value]) => ({
         user_id: userId,
         question_id: questionId,
         answer_value: value,
       }));
 
-      // Insert new answers with retry logic
-      let insertSuccess = false;
-      let retries = 3;
-      
-      while (!insertSuccess && retries > 0) {
-        const { error: insertError } = await supabase
-          .from("assessment_answers")
-          .insert(answersData);
+      // Use upsert to insert or update answers atomically
+      // This avoids race conditions by updating existing records or creating new ones
+      const { error } = await supabase
+        .from("assessment_answers")
+        .upsert(answersData, {
+          onConflict: 'user_id,question_id',
+          ignoreDuplicates: false
+        });
 
-        if (!insertError) {
-          insertSuccess = true;
-          break;
-        }
-
-        // If duplicate key error, delete and retry
-        if (insertError.code === '23505') {
-          console.warn("Duplicate key detected, cleaning up and retrying...");
-          await supabase
-            .from("assessment_answers")
-            .delete()
-            .eq("user_id", userId);
-          await new Promise(resolve => setTimeout(resolve, 500));
-          retries--;
-        } else {
-          throw insertError;
-        }
-      }
-
-      if (!insertSuccess) {
-        throw new Error("Failed to save answers after multiple attempts");
+      if (error) {
+        console.error("Upsert error:", error);
+        throw error;
       }
 
       toast.success("Assessment completed!");
