@@ -44,13 +44,32 @@ export default function Colleges() {
       setUserLocation({ city, state });
 
       // Fetch colleges matching domain and location
+      // First try exact domain match, then show all if no matches
       let query = supabase.from("colleges").select("*");
       
       if (domain) {
-        query = query.ilike("domain", `%${domain}%`);
+        query = query.eq("domain", domain);
       }
 
-      const { data } = await query.limit(10);
+      let { data } = await query;
+      
+      // If no exact matches, try to get colleges from same state
+      if (!data || data.length === 0) {
+        const fallbackQuery = supabase.from("colleges").select("*");
+        if (state) {
+          fallbackQuery.eq("state", state);
+        }
+        const fallbackResult = await fallbackQuery.limit(10);
+        data = fallbackResult.data;
+      }
+      
+      // If still no matches, just show top colleges by domain
+      if (!data || data.length === 0) {
+        const allQuery = supabase.from("colleges").select("*").limit(10);
+        const allResult = await allQuery;
+        data = allResult.data;
+      }
+      
       setColleges(data || []);
       setLoading(false);
     };

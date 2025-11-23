@@ -75,7 +75,7 @@ serve(async (req) => {
     }));
 
     // Prepare prompt for AI
-    const prompt = `Analyze this career assessment data and provide detailed career recommendations:
+    const prompt = `You are an expert career counselor. Analyze this career assessment and provide SPECIFIC, ACTIONABLE career guidance.
 
 Profile Information:
 - Name: ${profile?.full_name || "N/A"}
@@ -87,15 +87,49 @@ Profile Information:
 Assessment Domain Scores (0-100 scale):
 ${averageScores.map(s => `- ${s.domain}: ${s.score.toFixed(1)}`).join('\n')}
 
-Based on this data, provide:
-1. The dominant career domain (Technology, Business, Art, Music, or Education)
-2. A primary career recommendation that best fits this person
-3. 3-5 alternative career paths
-4. Key skill gaps to address
-5. A detailed 5-step roadmap for career development
-6. Recommended resources (courses, certifications, books)
+IMPORTANT: Structure your response with these exact sections:
 
-Provide detailed, actionable, and personalized advice.`;
+### Primary Career Recommendation: **[Specific Job Title]**
+
+Write 2-3 paragraphs explaining why this career fits the person based on their scores, skills, and goals. Be specific about the role and responsibilities.
+
+### Alternative Career Paths:
+
+List 3-5 alternative careers in this format:
+1. **[Job Title]**
+   - Why it fits: [2-3 sentences]
+   - Key skills needed: [list]
+   - Salary range: [approximate range]
+
+### Skill Gaps to Address:
+
+List 4-6 specific skills to develop:
+1. **[Skill Name]**: [How to acquire it - specific courses, certifications, or practice methods]
+2. **[Skill Name]**: [How to acquire it]
+(continue for each skill)
+
+### Roadmap for Career Development:
+
+**Step 1: [Months 1-3] - [Phase Name]**
+- Action item 1 with specific details
+- Action item 2 with specific details
+- Expected outcome
+
+**Step 2: [Months 4-6] - [Phase Name]**
+- Action item 1 with specific details
+- Action item 2 with specific details
+- Expected outcome
+
+(Continue for Steps 3, 4, 5, and 6)
+
+### Recommended Resources:
+
+List specific resources:
+- **[Course/Book Name]** by [Provider] - [What it covers]
+- **[Certification Name]** - [Why it's valuable]
+(continue for 8-10 resources)
+
+Make every recommendation specific, actionable, and tailored to this person's profile.`;
 
     // Call Lovable AI
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -138,28 +172,149 @@ Provide detailed, actionable, and personalized advice.`;
     const aiData = await aiResponse.json();
     const aiAnalysis = aiData.choices[0].message.content;
 
-    // Determine dominant domain
+    // Determine dominant domain and map to career domain
     const sortedScores = averageScores.sort((a, b) => b.score - a.score);
-    const dominantDomain = sortedScores[0].domain;
+    const topDomain = sortedScores[0].domain;
+    
+    // Map assessment domains to career domains for college matching
+    const domainMapping: Record<string, string> = {
+      "analytical": "Technology",
+      "technical": "Technology",
+      "technology": "Technology",
+      "creativity": "Art",
+      "artistic": "Art",
+      "musical": "Music",
+      "business": "Business",
+      "management": "Business",
+      "leadership": "Business",
+      "education": "Education",
+      "teaching": "Education",
+      "social": "Education",
+    };
+    
+    const dominantDomain = domainMapping[topDomain.toLowerCase()] || "Technology";
+
+    // Parse AI response to extract structured data
+    let primaryCareer = "AI-Generated Career Path";
+    let alternativeCareers: string[] = [];
+    let skillGaps: string[] = [];
+    let roadmapSteps: any[] = [];
+    let resources: string[] = [];
+    
+    try {
+      // Extract primary career
+      const careerMatch = aiAnalysis.match(/Primary Career Recommendation:\s*\*\*(.+?)\*\*/i);
+      if (careerMatch) primaryCareer = careerMatch[1].trim();
+      
+      // Extract alternative careers (look for numbered lists)
+      const altCareersSection = aiAnalysis.match(/Alternative Career Paths?:(.+?)(?=###|$)/is);
+      if (altCareersSection) {
+        const careers = altCareersSection[1].match(/\d+\.\s*\*\*(.+?)\*\*/g);
+        if (careers) {
+          alternativeCareers = careers.map((c: string) => c.replace(/\d+\.\s*\*\*|\*\*/g, '').trim()).slice(0, 5);
+        }
+      }
+      
+      // Extract skill gaps
+      const skillGapsSection = aiAnalysis.match(/Skill Gaps?(.+?)(?=###|$)/is);
+      if (skillGapsSection) {
+        const skills = skillGapsSection[1].match(/\d+\.\s*\*\*(.+?)\*\*/g);
+        if (skills) {
+          skillGaps = skills.map((s: string) => s.replace(/\d+\.\s*\*\*|\*\*/g, '').trim().split(':')[0]);
+        }
+      }
+      
+      // Extract roadmap steps - look for "Step X:" pattern
+      const roadmapSection = aiAnalysis.match(/Roadmap for Career Development:(.+?)(?=###|$)/is);
+      if (roadmapSection) {
+        const steps = roadmapSection[1].match(/\*\*Step \d+:(.+?)\*\*(.+?)(?=\*\*Step|\n\n###|$)/gis);
+        if (steps && steps.length > 0) {
+          roadmapSteps = steps.map((stepText: string, index: number) => {
+            const titleMatch = stepText.match(/\*\*Step \d+:\s*(.+?)\*\*/i);
+            const title = titleMatch ? titleMatch[1].trim() : `Step ${index + 1}`;
+            const description = stepText.replace(/\*\*Step \d+:.+?\*\*/i, '').trim().substring(0, 300);
+            
+            return {
+              step: index + 1,
+              title,
+              description
+            };
+          }).slice(0, 6);
+        }
+      }
+      
+      // If no roadmap steps found, use defaults based on domain
+      if (roadmapSteps.length === 0) {
+        roadmapSteps = generateDefaultRoadmap(dominantDomain);
+      }
+      
+      // Extract resources
+      const resourcesSection = aiAnalysis.match(/Recommended Resources:(.+?)$/is);
+      if (resourcesSection) {
+        const links = resourcesSection[1].match(/\*\s*\*\*(.+?)\*\*/g);
+        if (links) {
+          resources = links.map((l: string) => l.replace(/\*\s*\*\*|\*\*/g, '').trim()).slice(0, 10);
+        }
+      }
+    } catch (parseError) {
+      console.error("Error parsing AI response:", parseError);
+      roadmapSteps = generateDefaultRoadmap(dominantDomain);
+    }
 
     // Save recommendation to database
     const recommendation = {
       user_id: user.id,
       dominant_domain: dominantDomain,
-      primary_career: "AI-Generated Career Path",
+      primary_career: primaryCareer,
       reasoning: aiAnalysis,
       score_breakdown: averageScores,
-      alternative_careers: ["Path 1", "Path 2", "Path 3"],
-      skill_gaps: ["Skill 1", "Skill 2"],
-      roadmap_steps: [
-        { step: 1, title: "Foundation", description: "Build core skills" },
-        { step: 2, title: "Development", description: "Gain experience" },
-        { step: 3, title: "Specialization", description: "Focus on niche" },
-        { step: 4, title: "Mastery", description: "Become expert" },
-        { step: 5, title: "Leadership", description: "Lead and mentor" },
-      ],
-      recommended_resources: [],
+      alternative_careers: alternativeCareers.length > 0 ? alternativeCareers : ["Explore related fields", "Consider interdisciplinary roles", "Look into emerging careers"],
+      skill_gaps: skillGaps.length > 0 ? skillGaps : ["Technical proficiency", "Industry knowledge", "Practical experience"],
+      roadmap_steps: roadmapSteps,
+      recommended_resources: resources,
     };
+    
+    function generateDefaultRoadmap(domain: string) {
+      const roadmaps: Record<string, any[]> = {
+        "Technology": [
+          { step: 1, title: "Master Programming Fundamentals", description: "Learn Python, JavaScript, or Java. Complete online courses and build 3-5 personal projects. Focus on data structures and algorithms." },
+          { step: 2, title: "Gain Practical Experience", description: "Apply for internships at tech companies. Contribute to open-source projects on GitHub. Build a portfolio website showcasing your work." },
+          { step: 3, title: "Specialize in Your Domain", description: "Choose between Web Development, Data Science, AI/ML, Mobile Development, or Cloud Computing. Earn relevant certifications (AWS, Google Cloud, etc.)." },
+          { step: 4, title: "Build Professional Network", description: "Attend tech meetups and conferences. Connect with professionals on LinkedIn. Join online communities and forums in your specialization." },
+          { step: 5, title: "Advance Your Career", description: "Apply for mid-level positions. Lead technical projects. Consider pursuing advanced degrees or specialized certifications. Start mentoring junior developers." }
+        ],
+        "Business": [
+          { step: 1, title: "Build Business Acumen", description: "Study business fundamentals: finance, marketing, operations. Complete courses in business analytics and strategy. Learn Excel and business intelligence tools." },
+          { step: 2, title: "Gain Industry Experience", description: "Intern at companies in your target industry. Take on leadership roles in student organizations. Work on real business cases and projects." },
+          { step: 3, title: "Develop Specialization", description: "Choose your focus: Marketing, Finance, Operations, HR, or Entrepreneurship. Pursue relevant certifications (PMP, CFA, Google Analytics, etc.)." },
+          { step: 4, title: "Expand Your Network", description: "Join professional associations. Attend industry conferences. Build relationships with mentors and peers. Engage on LinkedIn regularly." },
+          { step: 5, title: "Step Into Leadership", description: "Target management positions. Lead cross-functional teams. Consider MBA or executive education. Start your own venture or consultancy." }
+        ],
+        "Art": [
+          { step: 1, title: "Master Artistic Fundamentals", description: "Practice drawing, painting, digital art, or your chosen medium daily. Study art history and theory. Build a diverse portfolio of 20+ pieces." },
+          { step: 2, title: "Develop Technical Skills", description: "Learn design software: Adobe Creative Suite, Figma, Blender, etc. Take courses in your specialization. Create commissioned work for friends and family." },
+          { step: 3, title: "Build Your Brand", description: "Create an online portfolio website. Share work on Instagram, Behance, ArtStation. Participate in art exhibitions and competitions." },
+          { step: 4, title: "Gain Commercial Experience", description: "Freelance for clients. Apply to design studios or agencies. Collaborate with other creatives. Build case studies of your best projects." },
+          { step: 5, title: "Establish Your Career", description: "Become a senior designer or creative director. Teach workshops. Sell your art. Consider opening your own studio or gallery." }
+        ],
+        "Music": [
+          { step: 1, title: "Build Musical Foundation", description: "Practice your instrument 2+ hours daily. Learn music theory and composition. Record 5-10 original pieces or covers." },
+          { step: 2, title: "Gain Performance Experience", description: "Perform at local venues, open mics, and events. Collaborate with other musicians. Create a YouTube channel or streaming presence." },
+          { step: 3, title: "Learn Music Technology", description: "Master DAWs (Logic Pro, Ableton, FL Studio). Study audio engineering and production. Build a home studio setup." },
+          { step: 4, title: "Build Your Audience", description: "Release music on Spotify, Apple Music, SoundCloud. Grow social media following. Network with industry professionals and producers." },
+          { step: 5, title: "Professionalize Your Career", description: "Sign with a label or remain independent. Tour regionally/nationally. Teach music lessons. Compose for media (films, games, ads)." }
+        ],
+        "Education": [
+          { step: 1, title: "Build Teaching Foundations", description: "Volunteer as a tutor. Complete education courses or teacher training. Learn pedagogy and classroom management techniques." },
+          { step: 2, title: "Gain Classroom Experience", description: "Work as a teaching assistant. Intern at schools or educational NGOs. Develop lesson plans and teaching materials." },
+          { step: 3, title: "Obtain Certifications", description: "Complete teaching certification programs. Pursue B.Ed or M.Ed degrees. Get specialized certifications (TESOL, Special Education, etc.)." },
+          { step: 4, title: "Specialize and Innovate", description: "Focus on a subject area or age group. Learn ed-tech tools and online teaching. Develop innovative teaching methodologies." },
+          { step: 5, title: "Advance in Education", description: "Move into senior teacher, department head, or principal roles. Pursue educational leadership. Start your own tutoring center or ed-tech venture." }
+        ]
+      };
+      
+      return roadmaps[domain] || roadmaps["Technology"];
+    }
 
     // Delete existing recommendation
     await supabase

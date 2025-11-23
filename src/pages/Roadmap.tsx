@@ -74,35 +74,77 @@ export default function Roadmap() {
 
         <div className="space-y-6">
           {steps.map((step: any, index: number) => (
-            <Card key={index} className="shadow-md">
+            <Card key={index} className="shadow-elegant hover:shadow-glow transition-smooth border-l-4 border-l-primary">
               <CardHeader>
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center text-primary-foreground font-bold text-lg shrink-0 shadow-md">
                     {step.step}
                   </div>
-                  <CardTitle>{step.title}</CardTitle>
+                  <div className="flex-1">
+                    <CardTitle className="text-xl mb-2">{step.title}</CardTitle>
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                      {step.description}
+                    </p>
+                  </div>
+                  {index === 0 && (
+                    <Badge variant="secondary" className="shrink-0">Current</Badge>
+                  )}
                 </div>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">{step.description}</p>
-              </CardContent>
             </Card>
           ))}
 
-          {roadmap.skill_gaps && roadmap.skill_gaps.length > 0 && (
-            <Card className="shadow-md bg-accent/10">
-              <CardHeader>
-                <CardTitle>Skills to Develop</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {roadmap.skill_gaps.map((skill: string, index: number) => (
-                    <Badge key={index} variant="secondary">{skill}</Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <div className="grid md:grid-cols-2 gap-6 mt-8">
+            {roadmap.skill_gaps && roadmap.skill_gaps.length > 0 && (
+              <Card className="shadow-md bg-accent/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    Skills to Develop
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {roadmap.skill_gaps.map((skill: string, index: number) => (
+                      <Badge key={index} variant="secondary" className="text-sm py-1">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {roadmap.alternative_careers && roadmap.alternative_careers.length > 0 && (
+              <Card className="shadow-md bg-accent/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    Alternative Paths
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {roadmap.alternative_careers.slice(0, 3).map((career: string, index: number) => (
+                      <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                        <span className="text-primary mt-1">•</span>
+                        <span>{career}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="flex gap-4 mt-8">
+            <Button onClick={() => navigate("/analysis")} variant="outline" size="lg" className="flex-1">
+              Back to Analysis
+            </Button>
+            <Button onClick={() => navigate("/colleges")} size="lg" className="flex-1">
+              Find Colleges
+            </Button>
+          </div>
         </div>
       </div>
     </div>
