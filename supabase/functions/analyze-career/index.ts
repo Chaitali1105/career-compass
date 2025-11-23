@@ -75,7 +75,7 @@ serve(async (req) => {
     }));
 
     // Prepare prompt for AI
-    const prompt = `You are an expert career counselor. Analyze this career assessment and provide SPECIFIC, ACTIONABLE career guidance.
+    const prompt = `You are an expert career counselor. Analyze this assessment and provide HIGHLY SPECIFIC career guidance.
 
 Profile Information:
 - Name: ${profile?.full_name || "N/A"}
@@ -87,49 +87,59 @@ Profile Information:
 Assessment Domain Scores (0-100 scale):
 ${averageScores.map(s => `- ${s.domain}: ${s.score.toFixed(1)}`).join('\n')}
 
-IMPORTANT: Structure your response with these exact sections:
+CRITICAL: Even if scores are similar, you MUST identify ONE dominant strength based on:
+1. The highest scoring domain
+2. The user's stated interests and goals
+3. Create clear differentiation in your analysis
+
+Provide your response in this EXACT format:
 
 ### Primary Career Recommendation: **[Specific Job Title]**
 
-Write 2-3 paragraphs explaining why this career fits the person based on their scores, skills, and goals. Be specific about the role and responsibilities.
+[2-3 paragraphs explaining this specific career and why it fits]
 
 ### Alternative Career Paths:
 
-List 3-5 alternative careers in this format:
-1. **[Job Title]**
-   - Why it fits: [2-3 sentences]
-   - Key skills needed: [list]
-   - Salary range: [approximate range]
+1. **[Job Title 1]** - [One sentence why this fits]
+2. **[Job Title 2]** - [One sentence why this fits]
+3. **[Job Title 3]** - [One sentence why this fits]
+4. **[Job Title 4]** - [One sentence why this fits]
+5. **[Job Title 5]** - [One sentence why this fits]
 
 ### Skill Gaps to Address:
 
-List 4-6 specific skills to develop:
-1. **[Skill Name]**: [How to acquire it - specific courses, certifications, or practice methods]
-2. **[Skill Name]**: [How to acquire it]
-(continue for each skill)
+1. **[Skill 1]**: [How to develop it]
+2. **[Skill 2]**: [How to develop it]
+3. **[Skill 3]**: [How to develop it]
+4. **[Skill 4]**: [How to develop it]
+5. **[Skill 5]**: [How to develop it]
 
 ### Roadmap for Career Development:
 
-**Step 1: [Months 1-3] - [Phase Name]**
-- Action item 1 with specific details
-- Action item 2 with specific details
-- Expected outcome
+**Step 1: [Months 1-6] - [Foundation Phase Name]**
+[Detailed action items with specific tasks and expected outcomes]
 
-**Step 2: [Months 4-6] - [Phase Name]**
-- Action item 1 with specific details
-- Action item 2 with specific details
-- Expected outcome
+**Step 2: [Months 7-12] - [Growth Phase Name]**
+[Detailed action items with specific tasks and expected outcomes]
 
-(Continue for Steps 3, 4, 5, and 6)
+**Step 3: [Year 2] - [Specialization Phase Name]**
+[Detailed action items with specific tasks and expected outcomes]
+
+**Step 4: [Year 3] - [Professional Phase Name]**
+[Detailed action items with specific tasks and expected outcomes]
+
+**Step 5: [Year 4+] - [Leadership Phase Name]**
+[Detailed action items with specific tasks and expected outcomes]
 
 ### Recommended Resources:
 
-List specific resources:
-- **[Course/Book Name]** by [Provider] - [What it covers]
-- **[Certification Name]** - [Why it's valuable]
-(continue for 8-10 resources)
+- **[Resource 1]** - [Platform/Provider]
+- **[Resource 2]** - [Platform/Provider]
+- **[Resource 3]** - [Platform/Provider]
+- **[Resource 4]** - [Platform/Provider]
+- **[Resource 5]** - [Platform/Provider]
 
-Make every recommendation specific, actionable, and tailored to this person's profile.`;
+IMPORTANT: Be specific, actionable, and create clear distinctions even when scores are similar.`;
 
     // Call Lovable AI
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
