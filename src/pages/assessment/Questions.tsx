@@ -174,11 +174,20 @@ export default function AssessmentQuestions() {
                   )}
                 </Button>
               ) : (
-                <Button onClick={() => setCurrentIndex(currentIndex + 1)} variant="outline">
+                <Button 
+                  onClick={() => setCurrentIndex(currentIndex + 1)} 
+                  variant="outline"
+                  disabled={!answers[currentQuestion?.id]}
+                >
                   Next
                 </Button>
               )}
             </div>
+            {currentIndex === questions.length - 1 && Object.keys(answers).length !== questions.length && (
+              <p className="text-sm text-destructive text-center mt-4">
+                Please answer all {questions.length} questions to submit ({Object.keys(answers).length}/{questions.length} completed)
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
