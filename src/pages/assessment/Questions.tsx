@@ -74,27 +74,64 @@ export default function AssessmentQuestions() {
     setSubmitting(true);
 
     try {
-      // Delete existing answers
-      await supabase
+      // Delete existing answers and wait for completion
+      const { error: deleteError } = await supabase
         .from("assessment_answers")
         .delete()
         .eq("user_id", userId);
 
-      // Insert new answers
+      if (deleteError) {
+        console.error("Delete error:", deleteError);
+        throw deleteError;
+      }
+
+      // Wait a moment to ensure delete is fully processed
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Prepare new answers
       const answersData = Object.entries(answers).map(([questionId, value]) => ({
         user_id: userId,
         question_id: questionId,
         answer_value: value,
       }));
 
-      const { error } = await supabase.from("assessment_answers").insert(answersData);
+      // Insert new answers with retry logic
+      let insertSuccess = false;
+      let retries = 3;
+      
+      while (!insertSuccess && retries > 0) {
+        const { error: insertError } = await supabase
+          .from("assessment_answers")
+          .insert(answersData);
 
-      if (error) throw error;
+        if (!insertError) {
+          insertSuccess = true;
+          break;
+        }
+
+        // If duplicate key error, delete and retry
+        if (insertError.code === '23505') {
+          console.warn("Duplicate key detected, cleaning up and retrying...");
+          await supabase
+            .from("assessment_answers")
+            .delete()
+            .eq("user_id", userId);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          retries--;
+        } else {
+          throw insertError;
+        }
+      }
+
+      if (!insertSuccess) {
+        throw new Error("Failed to save answers after multiple attempts");
+      }
 
       toast.success("Assessment completed!");
       navigate("/analysis");
     } catch (error: any) {
-      toast.error(error.message || "Error submitting answers");
+      console.error("Submit error:", error);
+      toast.error(error.message || "Error submitting answers. Please try again.");
       setSubmitting(false);
     }
   };
