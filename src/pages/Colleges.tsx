@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { ExternalLink, Loader2, MapPin } from "lucide-react";
+import { ExternalLink, Loader2, MapPin, Navigation as NavigationIcon } from "lucide-react";
+import { toast } from "sonner";
 
 export default function Colleges() {
   const navigate = useNavigate();
@@ -13,6 +14,32 @@ export default function Colleges() {
   const [colleges, setColleges] = useState<any[]>([]);
   const [userDomain, setUserDomain] = useState("");
   const [userLocation, setUserLocation] = useState({ city: "", state: "" });
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationPermission, setLocationPermission] = useState<"pending" | "granted" | "denied">("pending");
+
+  const requestLocation = () => {
+    if ("geolocation" in navigator) {
+      toast.info("Requesting location access...");
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+          setLocationPermission("granted");
+          toast.success("Location access granted! Showing nearby colleges.");
+        },
+        (error) => {
+          console.error("Location error:", error);
+          setLocationPermission("denied");
+          toast.error("Location access denied. Showing colleges based on your profile.");
+        }
+      );
+    } else {
+      toast.error("Geolocation is not supported by your browser.");
+      setLocationPermission("denied");
+    }
+  };
 
   useEffect(() => {
     const loadColleges = async () => {
@@ -43,35 +70,34 @@ export default function Colleges() {
       setUserDomain(domain);
       setUserLocation({ city, state });
 
-      // Fetch colleges matching domain and location
-      // First try exact domain match, then show all if no matches
-      let query = supabase.from("colleges").select("*");
-      
-      if (domain) {
-        query = query.eq("domain", domain);
-      }
+      // Fetch all colleges
+      const { data } = await supabase
+        .from("colleges")
+        .select("*");
 
-      let { data } = await query;
-      
-      // If no exact matches, try to get colleges from same state
-      if (!data || data.length === 0) {
-        const fallbackQuery = supabase.from("colleges").select("*");
-        if (state) {
-          fallbackQuery.eq("state", state);
-        }
-        const fallbackResult = await fallbackQuery.limit(10);
-        data = fallbackResult.data;
+      if (data) {
+        // Sort colleges by proximity (same city > same state > same domain > others)
+        const sortedColleges = data.sort((a, b) => {
+          const aScore = calculateProximityScore(a, { city, state, domain });
+          const bScore = calculateProximityScore(b, { city, state, domain });
+          return bScore - aScore;
+        });
+        
+        setColleges(sortedColleges);
       }
       
-      // If still no matches, just show top colleges by domain
-      if (!data || data.length === 0) {
-        const allQuery = supabase.from("colleges").select("*").limit(10);
-        const allResult = await allQuery;
-        data = allResult.data;
-      }
-      
-      setColleges(data || []);
       setLoading(false);
+    };
+
+    const calculateProximityScore = (
+      college: any,
+      user: { city: string; state: string; domain: string }
+    ) => {
+      let score = 0;
+      if (college.domain === user.domain) score += 10;
+      if (college.state.toLowerCase() === user.state.toLowerCase()) score += 5;
+      if (college.city.toLowerCase() === user.city.toLowerCase()) score += 3;
+      return score;
     };
 
     loadColleges();
@@ -88,40 +114,89 @@ export default function Colleges() {
     );
   }
 
+  const getProximityLabel = (college: any) => {
+    const cityMatch = college.city.toLowerCase() === userLocation.city.toLowerCase();
+    const stateMatch = college.state.toLowerCase() === userLocation.state.toLowerCase();
+    
+    if (cityMatch && stateMatch) return { label: "In Your City", variant: "default" as const };
+    if (stateMatch) return { label: "In Your State", variant: "secondary" as const };
+    return { label: "Other Region", variant: "outline" as const };
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <Navigation />
       <div className="max-w-6xl mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold mb-2">Recommended Colleges</h1>
-        <p className="text-lg text-muted-foreground mb-8">
-          Colleges in your area matching your career domain: <Badge className="ml-2">{userDomain}</Badge>
+        <p className="text-lg text-muted-foreground mb-4">
+          Colleges matching your career domain: <Badge className="ml-2">{userDomain}</Badge>
         </p>
 
+        {locationPermission === "pending" && (
+          <Card className="mb-6 border-primary/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <NavigationIcon className="w-6 h-6 text-primary" />
+                  <div>
+                    <h3 className="font-semibold">Find colleges near you</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Allow location access to see colleges sorted by distance
+                    </p>
+                  </div>
+                </div>
+                <Button onClick={requestLocation}>
+                  Allow Location
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {locationPermission === "granted" && currentLocation && (
+          <Card className="mb-6 bg-primary/5 border-primary/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2">
+                <NavigationIcon className="w-5 h-5 text-primary" />
+                <p className="text-sm font-medium">
+                  Showing colleges near your location
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {colleges.map((college) => (
-            <Card key={college.id} className="shadow-md hover:shadow-lg transition-smooth">
-              <CardHeader>
-                <CardTitle className="text-lg">{college.name}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <MapPin className="w-4 h-4 mr-1" />
-                  {college.city}, {college.state}
-                </div>
-                <div>
-                  <Badge variant="secondary">{college.domain}</Badge>
-                </div>
-                <p className="text-sm font-medium">{college.course}</p>
-                {college.website && (
-                  <Button variant="outline" size="sm" className="w-full" asChild>
-                    <a href={college.website} target="_blank" rel="noopener noreferrer">
-                      Visit Website <ExternalLink className="w-4 h-4 ml-2" />
-                    </a>
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+          {colleges.map((college) => {
+            const proximity = getProximityLabel(college);
+            return (
+              <Card key={college.id} className="shadow-md hover:shadow-lg transition-smooth">
+                <CardHeader>
+                  <CardTitle className="text-lg">{college.name}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <MapPin className="w-4 h-4 mr-1" />
+                      {college.city}, {college.state}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Badge variant="secondary">{college.domain}</Badge>
+                    <Badge variant={proximity.variant}>{proximity.label}</Badge>
+                  </div>
+                  <p className="text-sm font-medium">{college.course}</p>
+                  {college.website && (
+                    <Button variant="outline" size="sm" className="w-full" asChild>
+                      <a href={college.website} target="_blank" rel="noopener noreferrer">
+                        Visit Website <ExternalLink className="w-4 h-4 ml-2" />
+                      </a>
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
     </div>
