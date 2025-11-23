@@ -96,18 +96,6 @@ export default function RoadmapCard({ roadmap }: RoadmapCardProps) {
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-3 gap-2 pt-4 border-t">
-          <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate("/assessment/start")}>
-            🚀 Get Motivation
-          </Button>
-          <Button variant="outline" size="sm" className="text-xs" onClick={() => navigate("/assessment/start")}>
-            📝 Take Assessment
-          </Button>
-          <Button variant="outline" size="sm" className="text-xs">
-            📊 Track Progress
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );
