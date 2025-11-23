@@ -77,12 +77,7 @@ export default function RoadmapCard({ roadmap }: RoadmapCardProps) {
           </div>
         )}
 
-        {/* Notes */}
-        <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-          <p className="text-sm text-muted-foreground">
-            <strong>Notes:</strong> Focus on building practical experience. Start with small projects and gradually take on bigger challenges.
-          </p>
-        </div>
+        {/* Notes - REMOVED as per user request */}
 
         {/* Resources */}
         {resources.length > 0 && (

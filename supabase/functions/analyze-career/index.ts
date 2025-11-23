@@ -72,7 +72,61 @@ serve(async (req) => {
     const averageScores = Object.entries(domainScores).map(([domain, data]) => ({
       domain,
       score: (data.total / data.count / 5) * 100, // Normalize to 100
+      rawAverage: data.total / data.count, // Keep raw average for ranking
     }));
+    
+    // Sort by raw average first, then by domain name for consistency
+    averageScores.sort((a, b) => {
+      if (Math.abs(a.rawAverage - b.rawAverage) < 0.1) {
+        // If scores are nearly identical, use domain name for consistency
+        return a.domain.localeCompare(b.domain);
+      }
+      return b.rawAverage - a.rawAverage;
+    });
+    
+    // Determine dominant domain using multiple factors
+    let dominantDomain = averageScores[0].domain;
+    
+    // Override with user profile if they specified interests
+    const profileKeywords: Record<string, string[]> = {
+      "Technology": ["programming", "coding", "tech", "software", "computer", "IT", "developer", "engineer"],
+      "Business": ["business", "entrepreneur", "management", "finance", "marketing", "sales", "startup"],
+      "Art": ["art", "design", "creative", "painting", "drawing", "visual", "graphic"],
+      "Music": ["music", "singing", "instrument", "composer", "producer", "audio"],
+      "Education": ["teaching", "education", "tutor", "trainer", "professor", "instructor"],
+    };
+    
+    // Check user profile for domain keywords
+    const userText = `${profile?.main_skill || ""} ${profile?.interest_area || ""} ${profile?.goals || ""}`.toLowerCase();
+    for (const [domain, keywords] of Object.entries(profileKeywords)) {
+      if (keywords.some((keyword: string) => userText.includes(keyword))) {
+        dominantDomain = domain;
+        console.log(`Override dominant domain to ${domain} based on user profile`);
+        break;
+      }
+    }
+    
+    // Map assessment domains to career domains
+    const domainMapping: Record<string, string> = {
+      "analytical": "Technology",
+      "technical": "Technology",
+      "technology": "Technology",
+      "creativity": "Art",
+      "artistic": "Art",
+      "arts": "Art",
+      "musical": "Music",
+      "music": "Music",
+      "business": "Business",
+      "management": "Business",
+      "leadership": "Business",
+      "education": "Education",
+      "teaching": "Education",
+      "social": "Education",
+    };
+    
+    // Map the dominant domain
+    const mappedDomain = domainMapping[dominantDomain.toLowerCase()] || dominantDomain;
+    const finalDomain = mappedDomain;
 
     // Prepare prompt for AI
     const prompt = `You are an expert career counselor. Analyze this assessment and provide HIGHLY SPECIFIC career guidance.
@@ -182,27 +236,7 @@ IMPORTANT: Be specific, actionable, and create clear distinctions even when scor
     const aiData = await aiResponse.json();
     const aiAnalysis = aiData.choices[0].message.content;
 
-    // Determine dominant domain and map to career domain
-    const sortedScores = averageScores.sort((a, b) => b.score - a.score);
-    const topDomain = sortedScores[0].domain;
-    
-    // Map assessment domains to career domains for college matching
-    const domainMapping: Record<string, string> = {
-      "analytical": "Technology",
-      "technical": "Technology",
-      "technology": "Technology",
-      "creativity": "Art",
-      "artistic": "Art",
-      "musical": "Music",
-      "business": "Business",
-      "management": "Business",
-      "leadership": "Business",
-      "education": "Education",
-      "teaching": "Education",
-      "social": "Education",
-    };
-    
-    const dominantDomain = domainMapping[topDomain.toLowerCase()] || "Technology";
+    // Parse AI response to extract structured data
 
     // Parse AI response to extract structured data
     let primaryCareer = "AI-Generated Career Path";
@@ -255,7 +289,7 @@ IMPORTANT: Be specific, actionable, and create clear distinctions even when scor
       
       // If no roadmap steps found, use defaults based on domain
       if (roadmapSteps.length === 0) {
-        roadmapSteps = generateDefaultRoadmap(dominantDomain);
+        roadmapSteps = generateDefaultRoadmap(finalDomain);
       }
       
       // Extract resources
@@ -274,7 +308,7 @@ IMPORTANT: Be specific, actionable, and create clear distinctions even when scor
     // Save recommendation to database
     const recommendation = {
       user_id: user.id,
-      dominant_domain: dominantDomain,
+      dominant_domain: finalDomain,
       primary_career: primaryCareer,
       reasoning: aiAnalysis,
       score_breakdown: averageScores,
