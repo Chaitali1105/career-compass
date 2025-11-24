@@ -9,6 +9,7 @@ import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import Dashboard from "./pages/Dashboard";
 import ProfileCompletion from "./pages/ProfileCompletion";
+import Profile from "./pages/Profile";
 import AssessmentStart from "./pages/assessment/Start";
 import AssessmentQuestions from "./pages/assessment/Questions";
 import Analysis from "./pages/Analysis";
@@ -28,7 +29,8 @@ const App = () => (
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/profile" element={<ProfileCompletion />} />
+          <Route path="/profile-setup" element={<ProfileCompletion />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/assessment/start" element={<AssessmentStart />} />
           <Route path="/assessment/questions" element={<AssessmentQuestions />} />
           <Route path="/analysis" element={<Analysis />} />

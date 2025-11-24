@@ -54,7 +54,7 @@ export default function Register() {
 
       if (data.session) {
         toast.success("Account created successfully!");
-        navigate("/profile");
+        navigate("/profile-setup");
       } else {
         toast.success("Account created! Please check your email to verify.");
       }

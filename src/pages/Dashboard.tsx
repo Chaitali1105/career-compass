@@ -29,7 +29,7 @@ export default function Dashboard() {
         .maybeSingle();
 
       if (!profile) {
-        navigate("/profile");
+        navigate("/profile-setup");
         return;
       }
 
