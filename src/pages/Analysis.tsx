@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, TrendingUp, Target, Lightbulb, BookOpen, Award } from "lucide-react";
+import { formatAnalysisText } from "@/lib/formatAnalysis";
 
 export default function Analysis() {
   const navigate = useNavigate();
@@ -211,10 +212,8 @@ export default function Analysis() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="prose prose-sm max-w-none">
-                <div className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
-                  {analysis.reasoning}
-                </div>
+              <div className="prose prose-sm max-w-none space-y-2">
+                {formatAnalysisText(analysis.reasoning)}
               </div>
             </CardContent>
           </Card>

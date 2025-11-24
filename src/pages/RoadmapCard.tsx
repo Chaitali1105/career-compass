@@ -33,10 +33,15 @@ export default function RoadmapCard({ roadmap }: RoadmapCardProps) {
               <FileText className="w-5 h-5 text-primary" />
               <h3 className="text-lg font-semibold">Career Development Steps:</h3>
             </div>
-            <div className="space-y-2 pl-6 border-l-4 border-primary/30">
-              {steps.slice(0, 5).map((step: any, index: number) => (
-                <div key={index} className="text-sm leading-relaxed">
-                  {step.title || step.description}
+            <div className="space-y-4 pl-6 border-l-4 border-primary/30">
+              {steps.slice(0, 6).map((step: any, index: number) => (
+                <div key={index} className="space-y-1">
+                  <div className="font-semibold text-foreground">
+                    Step {step.step || index + 1}: {step.title}
+                  </div>
+                  <div className="text-sm leading-relaxed text-muted-foreground">
+                    {step.description}
+                  </div>
                 </div>
               ))}
             </div>

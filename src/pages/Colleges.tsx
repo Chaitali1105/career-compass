@@ -76,12 +76,14 @@ export default function Colleges() {
         .select("*");
 
       if (data) {
-        // Sort colleges by proximity (same city > same state > same domain > others)
-        const sortedColleges = data.sort((a, b) => {
-          const aScore = calculateProximityScore(a, { city, state, domain });
-          const bScore = calculateProximityScore(b, { city, state, domain });
-          return bScore - aScore;
-        });
+        // Filter and sort colleges: prioritize career domain match, then proximity
+        const sortedColleges = data
+          .filter(college => college.domain === domain) // Only show colleges matching career domain
+          .sort((a, b) => {
+            const aScore = calculateProximityScore(a, { city, state, domain });
+            const bScore = calculateProximityScore(b, { city, state, domain });
+            return bScore - aScore;
+          });
         
         setColleges(sortedColleges);
       }
@@ -167,36 +169,50 @@ export default function Colleges() {
         )}
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {colleges.map((college) => {
-            const proximity = getProximityLabel(college);
-            return (
-              <Card key={college.id} className="shadow-md hover:shadow-lg transition-smooth">
-                <CardHeader>
-                  <CardTitle className="text-lg">{college.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <MapPin className="w-4 h-4 mr-1" />
-                      {college.city}, {college.state}
+          {colleges.length === 0 ? (
+            <Card className="col-span-full shadow-md">
+              <CardContent className="p-8 text-center">
+                <h3 className="text-xl font-semibold mb-2">No Colleges Found</h3>
+                <p className="text-muted-foreground mb-4">
+                  We couldn't find colleges matching your career domain ({userDomain}) in our database.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Try searching online for colleges specializing in {userDomain}.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            colleges.map((college) => {
+              const proximity = getProximityLabel(college);
+              return (
+                <Card key={college.id} className="shadow-md hover:shadow-lg transition-smooth">
+                  <CardHeader>
+                    <CardTitle className="text-lg">{college.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <MapPin className="w-4 h-4 mr-1" />
+                        {college.city}, {college.state}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Badge variant="secondary">{college.domain}</Badge>
-                    <Badge variant={proximity.variant}>{proximity.label}</Badge>
-                  </div>
-                  <p className="text-sm font-medium">{college.course}</p>
-                  {college.website && (
-                    <Button variant="outline" size="sm" className="w-full" asChild>
-                      <a href={college.website} target="_blank" rel="noopener noreferrer">
-                        Visit Website <ExternalLink className="w-4 h-4 ml-2" />
-                      </a>
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                    <div className="flex gap-2 flex-wrap">
+                      <Badge variant="secondary">{college.domain}</Badge>
+                      <Badge variant={proximity.variant}>{proximity.label}</Badge>
+                    </div>
+                    <p className="text-sm font-medium">{college.course}</p>
+                    {college.website && (
+                      <Button variant="outline" size="sm" className="w-full" asChild>
+                        <a href={college.website} target="_blank" rel="noopener noreferrer">
+                          Visit Website <ExternalLink className="w-4 h-4 ml-2" />
+                        </a>
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
